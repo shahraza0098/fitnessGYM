@@ -1,6 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
+import { ClerkProvider } from "@clerk/nextjs";
+import { SelectedGymProvider } from "@/context/SelectedGymContext";
+import { shadesOfPurple } from "@clerk/themes";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -18,6 +20,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
+    <ClerkProvider appearance={{ baseTheme: shadesOfPurple }}>
+      <SelectedGymProvider>
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -25,5 +29,7 @@ export default function RootLayout({ children }) {
         {children}
       </body>
     </html>
+    </SelectedGymProvider>
+    </ClerkProvider>
   );
 }

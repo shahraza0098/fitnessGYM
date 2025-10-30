@@ -1,0 +1,479 @@
+
+
+
+// --------------------------------------------------
+// Prisma schema for Gym Management SaaS 
+// --------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL") // used only for migrations
+}
+
+// -------------------- Enums --------------------
+
+enum MemberStatus {
+  ACTIVE
+  EXPIRED
+  PAUSED
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  FAILED
+  REFUNDED
+}
+
+enum AttendanceMethod {
+  QR
+  RFID
+  MOBILE
+  MANUAL
+}
+
+enum NotificationAudience {
+  ALL_MEMBERS
+  TRAINERS
+  SINGLE_MEMBER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNSPECIFIED
+}
+
+// -------------------- Core Tenant Models --------------------
+
+model Owner {
+  id            String   @id @default(cuid())
+  clerkUserId   String   @unique
+  name          String?
+  email         String?
+  phone         String?
+  selectedGymId String?
+  role          String   @default("OWNER")
+  gyms          Gym[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([clerkUserId])
+}
+
+model Gym {
+  id           String   @id @default(cuid())
+  ownerId      String
+  owner        Owner    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  clerkOrgId   String   @unique
+  name         String
+  address      String
+  contactEmail String?
+  contactPhone String?
+  plan         String?
+
+  // Relations
+  managers           Manager[]
+  trainers           Trainer[]
+  members            Member[]
+  membershipPlans    MembershipPlan[]
+  attendances        Attendance[]
+  workoutPlans       WorkoutPlan[]
+  exercises          Exercise[]
+  mealPlans          MealPlan[]
+  dietTemplates      DietTemplate[]
+  payments           Payment[]
+  discounts          Discount[]
+  classSchedules     ClassSchedule[]
+  bookings           Booking[]
+  equipment          Equipment[]
+  payrolls           Payroll[]
+  performanceReviews PerformanceReview[]
+  notifications      Notification[]
+  feedbacks          Feedback[]
+  auditLogs          AuditLog[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([ownerId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// -------------------- Staff Models --------------------
+
+model Manager {
+  id          String   @id @default(cuid())
+  clerkUserId String   @unique
+  gymId       String
+  gym         Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name        String
+  email       String?
+  phone       String?
+  permissions String[]
+  role        String   @default("MANAGER")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  payrolls           Payroll[]
+  performanceReviews PerformanceReview[]
+
+  @@index([gymId])
+  @@index([clerkUserId])
+}
+
+model Trainer {
+  id             String   @id @default(cuid())
+  clerkUserId    String   @unique
+  gymId          String
+  gym            Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  specialty      String?
+  experience     Int?
+  certifications String[]
+  permissions    String[]
+  role           String   @default("TRAINER")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  classSchedules     ClassSchedule[]
+  workoutPlans       WorkoutPlan[] @relation("WorkoutCreatedBy")
+  payrolls           Payroll[]
+  performanceReviews PerformanceReview[]
+  feedbacks          Feedback[]
+
+  @@index([gymId])
+  @@index([clerkUserId])
+}
+
+// -------------------- Member Management --------------------
+
+model Member {
+  id               String          @id @default(cuid())
+  gymId            String
+  gym              Gym             @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name             String
+  email            String?
+  phone            String?
+  dob              DateTime?
+  gender           Gender?
+  address          String?
+  emergencyContact String?
+  membershipPlanId String?
+  membershipPlan   MembershipPlan? @relation(fields: [membershipPlanId], references: [id])
+  joinDate         DateTime        @default(now())
+  status           MemberStatus    @default(ACTIVE)
+  documents        Json?
+  deletedAt        DateTime?
+  attendances      Attendance[]
+  workoutPlans     WorkoutPlan[]
+  mealPlans        MealPlan[]
+  payments         Payment[]
+  bookings         Booking[]
+  feedbacks        Feedback[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([gymId, email])
+  @@unique([gymId, phone])
+  @@index([gymId])
+  @@index([createdAt])
+}
+
+// -------------------- Membership Plans --------------------
+
+model MembershipPlan {
+  id             String    @id @default(cuid())
+  gymId          String
+  gym            Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name           String
+  durationMonths Int
+  price          Decimal   @db.Decimal(10, 2)
+  benefits       String[]
+  autoRenew      Boolean   @default(false)
+  members        Member[]
+  deletedAt      DateTime?
+
+  @@index([gymId])
+}
+
+// -------------------- Attendance --------------------
+
+model Attendance {
+  id        String           @id @default(cuid())
+  gymId     String
+  gym       Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  checkIn   DateTime
+  checkOut  DateTime?
+  method    AttendanceMethod
+  createdAt DateTime         @default(now())
+
+  @@index([gymId])
+  @@index([memberId])
+  @@index([createdAt])
+}
+
+// -------------------- Workout & Nutrition --------------------
+
+model WorkoutPlan {
+  id          String                @id @default(cuid())
+  gymId       String
+  gym         Gym                   @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  name        String
+  createdById String?
+  createdBy   Trainer?              @relation("WorkoutCreatedBy", fields: [createdById], references: [id])
+  exercises   WorkoutPlanExercise[]
+  createdAt   DateTime              @default(now())
+
+  @@index([gymId])
+  @@index([memberId])
+  @@index([createdAt])
+}
+
+model WorkoutPlanExercise {
+  id            String      @id @default(cuid())
+  workoutPlanId String
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  exerciseId    String
+  exercise      Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  sets          Int
+  reps          Int
+  notes         String?
+
+  @@index([workoutPlanId])
+  @@index([exerciseId])
+}
+
+model Exercise {
+  id                  String                @id @default(cuid())
+  gymId               String
+  gym                 Gym                   @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name                String
+  videoUrl            String?
+  tips                String?
+  WorkoutPlanExercise WorkoutPlanExercise[]
+
+  @@index([gymId])
+}
+
+model MealPlan {
+  id        String   @id @default(cuid())
+  gymId     String
+  gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  macros    Json
+  meals     Json
+  createdAt DateTime @default(now())
+
+  @@index([gymId])
+  @@index([memberId])
+  @@index([createdAt])
+}
+
+model DietTemplate {
+  id       String @id @default(cuid())
+  gymId    String
+  gym      Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  goal     String
+  template String
+
+  @@index([gymId])
+}
+
+// -------------------- Billing --------------------
+
+model Payment {
+  id         String        @id @default(cuid())
+  gymId      String
+  gym        Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId   String?
+  member     Member?       @relation(fields: [memberId], references: [id])
+  amount     Decimal       @db.Decimal(10, 2)
+  currency   String
+  provider   String
+  invoiceUrl String?
+  status     PaymentStatus
+  createdAt  DateTime      @default(now())
+
+  @@index([gymId])
+  @@index([memberId])
+  @@index([createdAt])
+}
+
+model Discount {
+  id         String   @id @default(cuid())
+  gymId      String
+  gym        Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  code       String
+  percentage Int
+  expiresAt  DateTime
+
+  @@unique([gymId, code])
+  @@index([gymId])
+}
+
+// -------------------- Scheduling --------------------
+
+model ClassSchedule {
+  id        String      @id @default(cuid())
+  gymId     String
+  gym       Gym         @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name      String
+  trainerId String?
+  trainer   Trainer?    @relation(fields: [trainerId], references: [id])
+  start     DateTime
+  end       DateTime
+  capacity  Int
+  bookings  Booking[]
+
+  @@index([gymId, start])
+  @@index([trainerId])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  gymId     String
+  gym       Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  classId   String
+  class     ClassSchedule @relation(fields: [classId], references: [id], onDelete: Cascade)
+  status    String
+  createdAt DateTime      @default(now())
+
+  @@index([gymId])
+  @@index([memberId])
+  @@index([classId])
+  @@index([createdAt])
+}
+
+// -------------------- Equipment & Facility --------------------
+
+model Equipment {
+  id              String    @id @default(cuid())
+  gymId           String
+  gym             Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name            String
+  purchaseDate    DateTime?
+  warrantyExp     DateTime?
+  maintenanceLogs Json?
+  deletedAt       DateTime?
+
+  @@index([gymId])
+}
+
+// -------------------- HR --------------------
+
+model Payroll {
+  id         String     @id @default(cuid())
+  gymId      String
+  gym        Gym        @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  staffType  String     // "MANAGER" or "TRAINER"
+  managerId  String?
+  trainerId  String?
+  manager    Manager?   @relation(fields: [managerId], references: [id])
+  trainer    Trainer?   @relation(fields: [trainerId], references: [id])
+  month      Int
+  year       Int
+  salary     Decimal    @db.Decimal(10, 2)
+  commission Decimal?   @db.Decimal(10, 2)
+  paidOn     DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([gymId])
+  @@index([managerId])
+  @@index([trainerId])
+  @@index([createdAt])
+}
+
+model PerformanceReview {
+  id         String     @id @default(cuid())
+  gymId      String
+  gym        Gym        @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  staffType  String     // "MANAGER" or "TRAINER"
+  managerId  String?
+  trainerId  String?
+  manager    Manager?   @relation(fields: [managerId], references: [id])
+  trainer    Trainer?   @relation(fields: [trainerId], references: [id])
+  rating     Int
+  notes      String?
+  createdAt  DateTime   @default(now())
+
+  @@index([gymId])
+  @@index([managerId])
+  @@index([trainerId])
+  @@index([createdAt])
+}
+
+// -------------------- Communication --------------------
+
+model Notification {
+  id           String               @id @default(cuid())
+  gymId        String
+  gym          Gym                  @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  type         String
+  audience     NotificationAudience
+  message      String
+  scheduledFor DateTime?
+  sent         Boolean              @default(false)
+  createdAt    DateTime             @default(now())
+
+  @@index([gymId])
+  @@index([scheduledFor])
+  @@index([createdAt])
+}
+
+model Feedback {
+  id        String      @id @default(cuid())
+  gymId     String
+  gym       Gym         @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId  String?
+  member    Member?     @relation(fields: [memberId], references: [id])
+  trainerId String?
+  trainer   Trainer?    @relation(fields: [trainerId], references: [id])
+  rating    Int
+  comment   String?
+  createdAt DateTime    @default(now())
+
+  @@index([gymId])
+  @@index([memberId])
+  @@index([trainerId])
+  @@index([createdAt])
+}
+
+// -------------------- Audit --------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  gymId      String?
+  gym        Gym?     @relation(fields: [gymId], references: [id], onDelete: SetNull)
+  actorId    String?
+  actorType  String? // owner, manager, trainer, system
+  action     String
+  resource   String
+  resourceId String
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([gymId])
+  @@index([actorId])
+  @@index([createdAt])
+}
