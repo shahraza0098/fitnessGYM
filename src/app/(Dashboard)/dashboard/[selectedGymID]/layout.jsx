@@ -13,7 +13,8 @@ import {
   Settings,
   Hamburger,
   Users,
-  BriefcaseBusiness 
+  BriefcaseBusiness ,
+  ReceiptIndianRupee
 } from "lucide-react";
 
 export default function InvestorDashboardLayout({ children }) {
@@ -51,6 +52,7 @@ export default function InvestorDashboardLayout({ children }) {
     { name: "Diet Plan", href: `/dashboard/${selectedGymID}/diet-plan`, icon: Hamburger },
     { name: "Settings", href: `/dashboard/${selectedGymID}/settings`, icon: Settings },
     { name: "Staff Management", href: `/dashboard/${selectedGymID}/staff-management`, icon: BriefcaseBusiness },
+    { name: "Membership Plans", href: `/dashboard/${selectedGymID}/membership-plans`, icon: ReceiptIndianRupee },
   ];
 
   // if (!selectedGymID) return <div>Loading gym...</div>;

@@ -8,10 +8,21 @@ export async function GET(req) {
     const gymId = searchParams.get("gymId");
     if (!gymId) return new NextResponse("Gym ID is required", { status: 400 });
 
+    // const members = await prisma.member.findMany({
+    //   where: { gymId },
+    //   orderBy: { createdAt: "desc" },
+    // });
+
     const members = await prisma.member.findMany({
-      where: { gymId },
-      orderBy: { createdAt: "desc" },
-    });
+  where: { gymId },
+  include: {
+    membershipPlan: { select: { name: true } }
+  },
+  orderBy: { createdAt: "desc" },
+});
+
+
+
 
     return NextResponse.json(members);
   } catch (err) {

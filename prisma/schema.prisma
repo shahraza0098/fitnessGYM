@@ -203,9 +203,12 @@ model MembershipPlan {
   durationMonths Int
   price          Decimal   @db.Decimal(10, 2)
   benefits       String[]
+  isActive      Boolean   @default(true)
   autoRenew      Boolean   @default(false)
   members        Member[]
   deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([gymId])
 }

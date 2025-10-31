@@ -65,7 +65,7 @@
 
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { inviteUserToOrg } from "@/lib/clerkOrg";
+import { createUserAndAddToOrg } from "@/lib/clerkOrg";
 
 export async function POST(req, { params }) {
   try {
@@ -90,7 +90,7 @@ export async function POST(req, { params }) {
       return Response.json({ error: "Gym not linked with Clerk organization" }, { status: 400 });
 
     // 🔹 Invite user to Clerk org
-    const clerkUserId = await inviteUserToOrg({
+    const clerkUserId = await createUserAndAddToOrg({
       orgId: gym.clerkOrgId,
       email,
       name,
