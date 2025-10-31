@@ -8,7 +8,7 @@ export default function Home() {
        {/* add button to navigate to select-gym page */}
         <div className="mt-10">
           <a
-            href="/(Dashboard)/select-gym"
+            href="/select-gym"
             className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Go to Dashboard
