@@ -14,7 +14,8 @@ import {
   Hamburger,
   Users,
   BriefcaseBusiness ,
-  ReceiptIndianRupee
+  ReceiptIndianRupee,
+  BellRing
 } from "lucide-react";
 
 export default function InvestorDashboardLayout({ children }) {
@@ -53,6 +54,7 @@ export default function InvestorDashboardLayout({ children }) {
     { name: "Settings", href: `/dashboard/${selectedGymID}/settings`, icon: Settings },
     { name: "Staff Management", href: `/dashboard/${selectedGymID}/staff-management`, icon: BriefcaseBusiness },
     { name: "Membership Plans", href: `/dashboard/${selectedGymID}/membership-plans`, icon: ReceiptIndianRupee },
+    { name: "Notifications", href: `/dashboard/${selectedGymID}/notifications`, icon: BellRing },
   ];
 
   // if (!selectedGymID) return <div>Loading gym...</div>;
@@ -76,7 +78,7 @@ export default function InvestorDashboardLayout({ children }) {
         >
           <Menu size={20} />
         </button>
-        <div className="text-lg font-semibold">Investor Dashboard</div>
+        <div className="text-lg font-semibold">Dashboard</div>
         <div style={{ width: 36 }} /> {/* spacer to center title */}
       </div>
 

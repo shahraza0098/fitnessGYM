@@ -36,8 +36,21 @@ export async function POST(req) {
     const { userId } =await auth();
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
+
+    
+
     const body = await req.json();
     const { gymId, name, email, phone, dob, gender, address, emergencyContact, membershipPlanId } = body;
+
+    const plan = await prisma.membershipPlan.findUnique({
+      where: { id: membershipPlanId },
+    })
+
+    
+    //compute expiryDate based on membership plan duration
+    const joinDate = new Date();
+    const expiryDate = new Date();
+    expiryDate.setMonth(joinDate.getMonth() + plan.durationMonths);
 
     if (!gymId || !name) return new NextResponse("Missing fields", { status: 400 });
 
@@ -52,6 +65,7 @@ export async function POST(req) {
         address,
         emergencyContact,
         membershipPlanId,
+        expiryDate,
       },
     });
 

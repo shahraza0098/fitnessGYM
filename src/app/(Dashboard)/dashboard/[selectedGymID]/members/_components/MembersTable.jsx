@@ -69,6 +69,7 @@ export default function MembersTable({ gymId }) {
             <TableHead>Plan</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Join Date</TableHead>
+            <TableHead>Expiry Date</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -124,6 +125,21 @@ export default function MembersTable({ gymId }) {
                     ? new Date(member.joinDate).toLocaleDateString()
                     : "-"}
                 </TableCell>
+                <TableCell>
+  {member.expiryDate ? (
+    <Badge
+      className={
+        new Date(member.expiryDate) < new Date()
+          ? "bg-red-100 text-red-700"
+          : "bg-yellow-100 text-yellow-700"
+      }
+    >
+      {new Date(member.expiryDate).toLocaleDateString()}
+    </Badge>
+  ) : (
+    "-"
+  )}
+</TableCell>
               </TableRow>
             ))
           ) : (

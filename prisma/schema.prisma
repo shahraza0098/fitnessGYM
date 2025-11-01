@@ -39,6 +39,7 @@ enum AttendanceMethod {
 }
 
 enum NotificationAudience {
+  SYSTEM
   ALL_MEMBERS
   TRAINERS
   SINGLE_MEMBER
@@ -176,8 +177,10 @@ model Member {
   membershipPlan   MembershipPlan? @relation(fields: [membershipPlanId], references: [id])
   joinDate         DateTime        @default(now())
   status           MemberStatus    @default(ACTIVE)
+  expiryDate       DateTime?
   documents        Json?
   deletedAt        DateTime?
+  notifications   Notification[]
   attendances      Attendance[]
   workoutPlans     WorkoutPlan[]
   mealPlans        MealPlan[]
@@ -435,15 +438,18 @@ model Notification {
   type         String
   audience     NotificationAudience
   message      String
+  memberId     String?              // 🔹 Link to a specific member if needed
+  member       Member?              @relation(fields: [memberId], references: [id])
   scheduledFor DateTime?
   sent         Boolean              @default(false)
+  read         Boolean              @default(false) // 🔹 Mark as read/unread
   createdAt    DateTime             @default(now())
 
   @@index([gymId])
   @@index([scheduledFor])
   @@index([createdAt])
 }
-
+// -------------------- Feedback --------------------
 model Feedback {
   id        String      @id @default(cuid())
   gymId     String
