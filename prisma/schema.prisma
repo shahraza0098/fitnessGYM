@@ -18,6 +18,17 @@ datasource db {
 
 // -------------------- Enums --------------------
 
+
+enum WeekDay {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
 enum MemberStatus {
   ACTIVE
   EXPIRED
@@ -86,6 +97,7 @@ model Gym {
   members            Member[]
   membershipPlans    MembershipPlan[]
   attendances        Attendance[]
+  offDays            GymOffDay[] 
   workoutPlans       WorkoutPlan[]
   exercises          Exercise[]
   mealPlans          MealPlan[]
@@ -213,6 +225,23 @@ model MembershipPlan {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  @@index([gymId])
+}
+
+
+// -------------------- Gym Off Days --------------------
+
+
+model GymOffDay {
+  id         String    @id @default(cuid())
+  gymId      String
+  gym        Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  date       DateTime? // One-time off days (e.g., festivals)
+  dayOfWeek  WeekDay?  // Weekly recurring off days (e.g., Sunday)
+  reason     String?
+  createdAt  DateTime  @default(now())
+
+  @@unique([gymId, date])
   @@index([gymId])
 }
 
