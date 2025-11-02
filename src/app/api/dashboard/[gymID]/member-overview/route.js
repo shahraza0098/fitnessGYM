@@ -69,12 +69,12 @@ import { NextResponse } from "next/server";
 
 export async function GET(req, { params }) {
   try {
-    const { gymId } = params;
+    const { gymID } = await params;
     const now = new Date();
 
     // Fetch members
     const members = await prisma.member.findMany({
-      where: { gymId, deletedAt: null },
+      where: { gymId:gymID, deletedAt: null },
       select: {
         dob: true,
         gender: true,
