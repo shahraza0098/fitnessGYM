@@ -80,6 +80,20 @@ model Owner {
   @@index([clerkUserId])
 }
 
+
+//DB User model
+
+// model User{
+//   id String @id @default(cuid())
+//   clerkUserId String @unique
+//   name String?
+//   email String? 
+//   role String @default("TRAINER")
+//   gyms Gym[] @relation("UserGyms", references: [id])
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
+
 model Gym {
   id           String   @id @default(cuid())
   ownerId      String
@@ -101,7 +115,7 @@ model Gym {
   workoutPlans       WorkoutPlan[]
   exercises          Exercise[]
   mealPlans          MealPlan[]
-  dietTemplates      DietTemplate[]
+  DietTemplates     DietTemplate[]
   payments           Payment[]
   discounts          Discount[]
   classSchedules     ClassSchedule[]
@@ -156,6 +170,8 @@ model Trainer {
   specialty      String?
   experience     Int?
   certifications String[]
+  mealPlans      MealPlan[]
+  DietTemplates   DietTemplate[]
   permissions    String[]
   role           String   @default("TRAINER")
   createdAt      DateTime @default(now())
@@ -308,29 +324,111 @@ model Exercise {
   @@index([gymId])
 }
 
+// model MealPlan {
+//   id        String   @id @default(cuid())
+//   gymId     String
+//   gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+//   memberId  String
+//   member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+//   macros    Json
+//   meals     Json
+//   createdAt DateTime @default(now())
+
+//   @@index([gymId])
+//   @@index([memberId])
+//   @@index([createdAt])
+// }
+
+// model DietTemplate {
+//   id       String @id @default(cuid())
+//   gymId    String
+//   gym      Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+//   goal     String
+//   template String
+
+//   @@index([gymId])
+// }
+
+
+// -------------------- Nutrition & Diet --------------------
+
 model MealPlan {
-  id        String   @id @default(cuid())
-  gymId     String
-  gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  memberId  String
-  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  macros    Json
-  meals     Json
-  createdAt DateTime @default(now())
+  id          String         @id @default(cuid())
+  gymId       String
+  gym         Gym            @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  trainerId   String?
+  trainer     Trainer?       @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+
+  goal        String?        // e.g., "Weight Loss", "Muscle Gain", etc.
+  targetMacros Json?         // Weekly target macros summary { protein: 150, carbs: 200, fat: 60 }
+  weekStart   DateTime?      // Optional, defines when the plan starts (e.g., Monday)
+  weekEnd     DateTime?
+
+  days        MealPlanDay[]  // Each day’s meals are stored in a child model
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@index([gymId])
   @@index([memberId])
+  @@index([trainerId])
   @@index([createdAt])
 }
 
+model MealPlanDay {
+  id          String   @id @default(cuid())
+  mealPlanId  String
+  mealPlan    MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  dayOfWeek   String   // e.g., "Monday", "Tuesday" — or could be "Day 1", "Day 2"
+  dailyMacros Json?    // { protein: 120, carbs: 180, fat: 50, calories: 1800 }
+
+  meals       Meal[]   // one-to-many — breakfast/lunch/dinner/snack etc.
+
+  createdAt   DateTime @default(now())
+
+  @@index([mealPlanId])
+}
+
+
+model Meal {
+  id            String        @id @default(cuid())
+  mealPlanDayId String
+  mealPlanDay   MealPlanDay   @relation(fields: [mealPlanDayId], references: [id], onDelete: Cascade)
+
+  type          String        // e.g., "Breakfast", "Lunch", "Dinner", "Snack"
+  title         String        // e.g., "Oatmeal with Milk"
+  description   String?       // optional description
+  ingredients   Json?         // [{ name: "Oats", quantity: "50g" }, { name: "Milk", quantity: "200ml" }]
+  calories      Int?          
+  macros        Json?         // { protein: 25, carbs: 40, fat: 5 }
+
+  createdAt     DateTime      @default(now())
+
+  @@index([mealPlanDayId])
+}
+
+
+
+//diet-plan template
 model DietTemplate {
-  id       String @id @default(cuid())
-  gymId    String
-  gym      Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  goal     String
-  template String
+  id          String   @id @default(cuid())
+  gymId       String
+  gym         Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  trainerId   String?
+  trainer     Trainer? @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  name        String
+  goal        String?
+  duration    Int?     // in weeks
+  plan        Json     // full JSON of the diet plan
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([gymId])
+  @@index([trainerId])
+  @@index([createdAt])
 }
 
 // -------------------- Billing --------------------

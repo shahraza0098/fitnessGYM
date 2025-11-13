@@ -105,7 +105,7 @@ export async function GET(req, { params }) {
     // Always return an array, even if empty
     return NextResponse.json(plans || []);
   } catch (err) {
-    console.error("❌ Error fetching membership plans:", err);
+    console.error(" Error fetching membership plans:", err);
     return NextResponse.json(
       { error: "Failed to load plans", data: [] },
       { status: 500 }
@@ -133,7 +133,7 @@ export async function POST(req, { params }) {
 
     return NextResponse.json(plan);
   } catch (err) {
-    console.error("❌ Error creating membership plan:", err);
+    console.error(" Error creating membership plan:", err);
     return NextResponse.json(
       { error: "Failed to create plan" },
       { status: 500 }

@@ -131,7 +131,7 @@ import { clerkClient } from "@clerk/nextjs/server";
  * @param {string} params.role - "MANAGER" or "TRAINER"
  * @returns {Promise<string>} - The user's Clerk ID
  */
-export async function createUserAndAddToOrg({ orgId, email, name, role }) {
+export async function createUserAndAddToOrg({ orgId, email, name, role, gymId }) {
   try {
     const client = await clerkClient();
 
@@ -171,6 +171,11 @@ export async function createUserAndAddToOrg({ orgId, email, name, role }) {
           first_name: firstName || "",
           last_name: lastName || "",
           username: username,
+          "public_metadata": {
+              "role": role=="MANAGER" ? "MANAGER" : "TRAINER",
+              "gymOrgId": orgId,
+              "gymId": gymId,
+          },
           skip_password_requirement: true, // user signs in via magic link / SSO
         }),
       });
@@ -182,7 +187,7 @@ export async function createUserAndAddToOrg({ orgId, email, name, role }) {
       }
 
       const newUser = await response.json();
-      log("✅ New Clerk user created via REST API:", newUser);
+      console.log("✅ New Clerk user created via REST API:", newUser);
       userId = newUser.id;
     }
 

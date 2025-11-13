@@ -28,6 +28,8 @@ export async function POST(req) {
     //   return NextResponse.json(updated);
     // }
 
+    
+
     const owner = await prisma.owner.create({
       data: { clerkUserId: userId, name, email, phone },
     });
@@ -37,6 +39,31 @@ export async function POST(req) {
 //   publicMetadata: { onboardingComplete: true },
 // });
 
+
+// await clerkClient.users.updateUser(userId, {
+//        publicMetadata: {
+//          role: "OWNER",
+         
+//         },
+//     });
+//start
+const response = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.CLERK_SECRET_KEY}`,
+        },
+        body: JSON.stringify({
+       // user signs in via magic link / SSO
+          "public_metadata": {
+              "role": "OWNER",
+              "DBUserID": owner.id,
+              "onboardingComplete": owner?true:false,
+          },
+
+        }),
+      });
+//end
     return NextResponse.json(
   { owner, message: "Onboarding complete" },
   { status: 201 }

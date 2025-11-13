@@ -279,13 +279,18 @@ export default function AttendancePage({ params }) {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
+  const [trendData, setTrendData] = useState([]);
+const [summary, setSummary] = useState({});
 
   async function fetchAttendance() {
     try {
       setLoading(true);
       const res = await fetch(`/api/dashboard/${selectedGymID}/attendance`);
-      const { members } = await res.json();
+      // const { members } = await res.json();
+       const { members, trendData, summary } = await res.json();
       setMembers(members);
+      setTrendData(trendData);
+  setSummary(summary);
     } catch (error) {
       console.error("Failed to load attendance:", error);
     } finally {
@@ -355,7 +360,7 @@ export default function AttendancePage({ params }) {
       </div>
 
         {/* 📊 Charts Section */}
-    <AttendanceCharts
+    {/* <AttendanceCharts
       trendData={[
         { date: "Oct 1", count: 22 },
         { date: "Oct 2", count: 25 },
@@ -365,7 +370,13 @@ export default function AttendancePage({ params }) {
       ]}
       presentCount={presentToday}
       absentCount={absentToday}
-    />
+    /> */}
+
+    <AttendanceCharts
+  trendData={trendData}
+  presentCount={summary.presentToday}
+  absentCount={summary.absentToday}
+/>
 
 
       {/* Member Cards */}

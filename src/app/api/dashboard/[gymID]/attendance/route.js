@@ -142,181 +142,675 @@
 // }
 
 
+// //this is good but can be more better to avoid bugs
+// import { NextResponse } from "next/server";
+// import prisma from "@/lib/prisma";
+
+// // ✅ Helper: Get all working days excluding off days and future days
+// async function getWorkingDaysInMonth(gymID, year, month) {
+//   const today = new Date();
+//   const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+//   // Fetch off days (weekly + custom)
+//   const offDays = await prisma.gymOffDay.findMany({
+//     where: { gymId: gymID },
+//     select: { date: true, dayOfWeek: true },
+//   });
+
+//   const oneTimeOffs = new Set(
+//     offDays
+//       .filter((d) => d.date)
+//       .map((d) => new Date(d.date).toDateString())
+//   );
+
+//   const weeklyOffs = new Set(
+//     offDays
+//       .filter((d) => d.dayOfWeek)
+//       .map((d) => d.dayOfWeek)
+//   );
+
+//   const workingDays = [];
+//   for (let day = 1; day <= daysInMonth; day++) {
+//     const date = new Date(year, month, day);
+//     if (date > today) break; // Skip future days
+
+//     const dayName = date.toLocaleDateString("en-US", {
+//       weekday: "long",
+//     }).toUpperCase();
+
+//     const isWeeklyOff = weeklyOffs.has(dayName);
+//     const isHoliday = oneTimeOffs.has(date.toDateString());
+
+//     if (!isWeeklyOff && !isHoliday) {
+//       workingDays.push(date);
+//     }
+//   }
+
+//   return workingDays;
+// }
+
+// // ✅ GET — Fetch Attendance Overview + Member Cards
+// export async function GET(req, { params }) {
+//   const { gymID } = await params;
+//   const searchParams = new URL(req.url).searchParams;
+//   const year = parseInt(searchParams.get("year") || new Date().getFullYear());
+//   const month = parseInt(searchParams.get("month") || new Date().getMonth());
+
+//   const members = await prisma.member.findMany({
+//     where: { gymId: gymID, deletedAt: null },
+//     select: { id: true, name: true },
+//   });
+
+//   const attendances = await prisma.attendance.findMany({
+//     where: {
+//       gymId: gymID,
+//       checkIn: {
+//         gte: new Date(year, month, 1),
+//         lt: new Date(year, month + 1, 1),
+//       },
+//     },
+//   });
+
+//   const workingDays = await getWorkingDaysInMonth(gymID, year, month);
+
+//   const data = members.map((m) => {
+//     const memberAttendances = attendances.filter((a) => a.memberId === m.id);
+//     const totalPresent = memberAttendances.length;
+
+//     // only count past working days for absences
+//     const totalAbsent = Math.max(
+//       0,
+//       workingDays.length - totalPresent
+//     );
+
+//     const presentDates = memberAttendances.map((a) =>
+//       new Date(a.checkIn).toDateString()
+//     );
+
+//     return {
+//       id: m.id,
+//       name: m.name,
+//       totalPresent,
+//       totalAbsent,
+//       streak: getStreak(presentDates, workingDays),
+//       hasCheckedInToday: presentDates.includes(new Date().toDateString()),
+//       checkOutDone: memberAttendances.some(
+//         (a) =>
+//           new Date(a.checkIn).toDateString() === new Date().toDateString() &&
+//           a.checkOut
+//       ),
+//     };
+//   });
+
+//   return NextResponse.json({ members: data });
+// }
+
+// // ✅ Helper: Calculate streaks (consecutive present days)
+// function getStreak(presentDates, workingDays) {
+//   const sortedWorking = workingDays.map((d) => d.toDateString());
+//   let streak = 0;
+
+//   for (let i = sortedWorking.length - 1; i >= 0; i--) {
+//     if (presentDates.includes(sortedWorking[i])) streak++;
+//     else break;
+//   }
+
+//   return streak;
+// }
+
+// // ✅ POST — Mark Check-in
+// export async function POST(req, { params }) {
+//   const { gymID } =await params;
+//   const body = await req.json();
+//   const { memberId, method } = body;
+
+//   const today = new Date();
+//   const existing = await prisma.attendance.findFirst({
+//     where: {
+//       gymId: gymID,
+//       memberId,
+//       checkIn: {
+//         gte: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+//       },
+//     },
+//   });
+
+//   if (existing)
+//     return NextResponse.json({ message: "Already checked in today" }, { status: 400 });
+
+//   const attendance = await prisma.attendance.create({
+//     data: {
+//       gymId: gymID,
+//       memberId,
+//       checkIn: today,
+//       method: method || "MANUAL",
+//     },
+//   });
+
+//   return NextResponse.json(attendance);
+// }
+
+// // ✅ PATCH — Mark Checkout
+// export async function PATCH(req, { params }) {
+//   const { gymID } = params;
+//   const body = await req.json();
+//   const { memberId } = body;
+
+//   const today = new Date();
+//   const attendance = await prisma.attendance.findFirst({
+//     where: {
+//       gymId: gymID,
+//       memberId,
+//       checkIn: {
+//         gte: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+//       },
+//     },
+//   });
+
+//   if (!attendance)
+//     return NextResponse.json({ message: "No check-in found" }, { status: 404 });
+
+//   if (attendance.checkOut)
+//     return NextResponse.json({ message: "Already checked out" }, { status: 400 });
+
+//   const updated = await prisma.attendance.update({
+//     where: { id: attendance.id },
+//     data: { checkOut: new Date() },
+//   });
+
+//   return NextResponse.json(updated);
+// }
+
+// //some improvements made to avoid bugs
+// import { NextResponse } from "next/server";
+// import prisma from "@/lib/prisma";
+
+// // ✅ Utility: Calculate streaks (consecutive present working days)
+// function calculateStreak(presentDates, workingDays) {
+//   const sortedWorking = workingDays.map((d) => d.toDateString());
+//   let streak = 0;
+//   for (let i = sortedWorking.length - 1; i >= 0; i--) {
+//     if (presentDates.includes(sortedWorking[i])) streak++;
+//     else break;
+//   }
+//   return streak;
+// }
+
+// // ✅ Utility: Get all valid working days in month (excluding off days + future)
+// async function getWorkingDaysInMonth(gymId, year, month) {
+//   const today = new Date();
+//   const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+//   const offDays = await prisma.gymOffDay.findMany({
+//     where: { gymId },
+//     select: { date: true, dayOfWeek: true },
+//   });
+
+//   const oneTimeOffs = new Set(
+//     offDays
+//       .filter((d) => d.date)
+//       .map((d) => new Date(d.date).toDateString())
+//   );
+
+//   const weeklyOffs = new Set(
+//     offDays
+//       .filter((d) => d.dayOfWeek)
+//       .map((d) => d.dayOfWeek)
+//   );
+
+//   const workingDays = [];
+//   for (let day = 1; day <= daysInMonth; day++) {
+//     const date = new Date(year, month, day);
+//     if (date > today) break; // Skip future days
+
+//     const dayName = date
+//       .toLocaleDateString("en-US", { weekday: "long" })
+//       .toUpperCase();
+
+//     const isWeeklyOff = weeklyOffs.has(dayName);
+//     const isHoliday = oneTimeOffs.has(date.toDateString());
+
+//     if (!isWeeklyOff && !isHoliday) workingDays.push(date);
+//   }
+
+//   return workingDays;
+// }
+
+// /* -------------------------------------------------------------------------- */
+// /*                                GET REQUEST                                 */
+// /* -------------------------------------------------------------------------- */
+
+// export async function GET(req, { params }) {
+//   try {
+//     const { gymID } =await  params;
+//     if (!gymID)
+//       return NextResponse.json({ error: "Missing gym ID" }, { status: 400 });
+
+//     const searchParams = new URL(req.url).searchParams;
+//     const year = parseInt(searchParams.get("year")) || new Date().getFullYear();
+//     const month =
+//       parseInt(searchParams.get("month")) || new Date().getMonth();
+
+//     const [members, attendances, workingDays] = await Promise.all([
+//       prisma.member.findMany({
+//         where: { gymId: gymID, deletedAt: null },
+//         select: { id: true, name: true },
+//       }),
+//       prisma.attendance.findMany({
+//         where: {
+//           gymId: gymID,
+//           checkIn: {
+//             gte: new Date(year, month, 1),
+//             lt: new Date(year, month + 1, 1),
+//           },
+//         },
+//         select: { id: true, memberId: true, checkIn: true, checkOut: true },
+//       }),
+//       getWorkingDaysInMonth(gymID, year, month),
+//     ]);
+
+//     const data = members.map((member) => {
+//       const records = attendances.filter((a) => a.memberId === member.id);
+//       const presentDates = records.map((a) =>
+//         new Date(a.checkIn).toDateString()
+//       );
+//       const totalPresent = records.length;
+//       const totalAbsent = Math.max(0, workingDays.length - totalPresent);
+//       const streak = calculateStreak(presentDates, workingDays);
+//       const hasCheckedInToday = presentDates.includes(
+//         new Date().toDateString()
+//       );
+//       const checkOutDone = records.some(
+//         (a) =>
+//           new Date(a.checkIn).toDateString() === new Date().toDateString() &&
+//           a.checkOut
+//       );
+
+//       return {
+//         id: member.id,
+//         name: member.name,
+//         totalPresent,
+//         totalAbsent,
+//         streak,
+//         hasCheckedInToday,
+//         checkOutDone,
+//       };
+//     });
+
+//     return NextResponse.json({ members: data });
+//   } catch (error) {
+//     console.error("Error in GET /attendance:", error);
+//     return NextResponse.json(
+//       { error: "Failed to fetch attendance data" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// /* -------------------------------------------------------------------------- */
+// /*                               POST REQUEST                                 */
+// /* -------------------------------------------------------------------------- */
+// // ✅ Mark Check-in
+// export async function POST(req, { params }) {
+//   try {
+//     const { gymID } =await params;
+//     const { memberId, method = "MANUAL" } = await req.json();
+
+//     if (!memberId)
+//       return NextResponse.json(
+//         { error: "Member ID is required" },
+//         { status: 400 }
+//       );
+
+//     const today = new Date();
+//     const startOfToday = new Date(
+//       today.getFullYear(),
+//       today.getMonth(),
+//       today.getDate()
+//     );
+
+//     const existing = await prisma.attendance.findFirst({
+//       where: {
+//         gymId: gymID,
+//         memberId,
+//         checkIn: { gte: startOfToday },
+//       },
+//     });
+
+//     if (existing)
+//       return NextResponse.json(
+//         { message: "Already checked in today" },
+//         { status: 400 }
+//       );
+
+//     const attendance = await prisma.attendance.create({
+//       data: { gymId: gymID, memberId, checkIn: today, method },
+//     });
+
+//     return NextResponse.json(attendance);
+//   } catch (error) {
+//     console.error("Error in POST /attendance:", error);
+//     return NextResponse.json(
+//       { error: "Failed to check in" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// /* -------------------------------------------------------------------------- */
+// /*                              PATCH REQUEST                                 */
+// /* -------------------------------------------------------------------------- */
+// // ✅ Mark Checkout
+// export async function PATCH(req, { params }) {
+//   try {
+//     const { gymID } = await params;
+//     const { memberId } = await req.json();
+
+//     if (!memberId)
+//       return NextResponse.json(
+//         { error: "Member ID is required" },
+//         { status: 400 }
+//       );
+
+//     const today = new Date();
+//     const startOfToday = new Date(
+//       today.getFullYear(),
+//       today.getMonth(),
+//       today.getDate()
+//     );
+
+//     const attendance = await prisma.attendance.findFirst({
+//       where: {
+//         gymId: gymID,
+//         memberId,
+//         checkIn: { gte: startOfToday },
+//       },
+//     });
+
+//     if (!attendance)
+//       return NextResponse.json(
+//         { message: "No check-in found for today" },
+//         { status: 404 }
+//       );
+
+//     if (attendance.checkOut)
+//       return NextResponse.json(
+//         { message: "Already checked out" },
+//         { status: 400 }
+//       );
+
+//     const updated = await prisma.attendance.update({
+//       where: { id: attendance.id },
+//       data: { checkOut: new Date() },
+//     });
+
+//     return NextResponse.json(updated);
+//   } catch (error) {
+//     console.error("Error in PATCH /attendance:", error);
+//     return NextResponse.json(
+//       { error: "Failed to check out" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+
+
+
+//responding line chart data also
 
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { subDays, eachDayOfInterval, format } from "date-fns";
 
-// ✅ Helper: Get all working days excluding off days and future days
-async function getWorkingDaysInMonth(gymID, year, month) {
+/* -------------------------------------------------------------------------- */
+/*                              Utility Functions                             */
+/* -------------------------------------------------------------------------- */
+
+// ✅ Calculate streaks (consecutive present working days)
+function calculateStreak(presentDates, workingDays) {
+  const sortedWorking = workingDays.map((d) => d.toDateString());
+  let streak = 0;
+  for (let i = sortedWorking.length - 1; i >= 0; i--) {
+    if (presentDates.includes(sortedWorking[i])) streak++;
+    else break;
+  }
+  return streak;
+}
+
+// ✅ Get all valid working days in month (excluding off days + future)
+async function getWorkingDaysInMonth(gymId, year, month) {
   const today = new Date();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Fetch off days (weekly + custom)
   const offDays = await prisma.gymOffDay.findMany({
-    where: { gymId: gymID },
+    where: { gymId },
     select: { date: true, dayOfWeek: true },
   });
 
   const oneTimeOffs = new Set(
-    offDays
-      .filter((d) => d.date)
-      .map((d) => new Date(d.date).toDateString())
+    offDays.filter((d) => d.date).map((d) => new Date(d.date).toDateString())
   );
 
   const weeklyOffs = new Set(
-    offDays
-      .filter((d) => d.dayOfWeek)
-      .map((d) => d.dayOfWeek)
+    offDays.filter((d) => d.dayOfWeek).map((d) => d.dayOfWeek)
   );
 
   const workingDays = [];
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
-    if (date > today) break; // Skip future days
-
-    const dayName = date.toLocaleDateString("en-US", {
-      weekday: "long",
-    }).toUpperCase();
+    if (date > today) break; // skip future days
+    const dayName = date
+      .toLocaleDateString("en-US", { weekday: "long" })
+      .toUpperCase();
 
     const isWeeklyOff = weeklyOffs.has(dayName);
     const isHoliday = oneTimeOffs.has(date.toDateString());
-
-    if (!isWeeklyOff && !isHoliday) {
-      workingDays.push(date);
-    }
+    if (!isWeeklyOff && !isHoliday) workingDays.push(date);
   }
 
   return workingDays;
 }
 
-// ✅ GET — Fetch Attendance Overview + Member Cards
+/* -------------------------------------------------------------------------- */
+/*                                GET REQUEST                                 */
+/* -------------------------------------------------------------------------- */
 export async function GET(req, { params }) {
-  const { gymID } = await params;
-  const searchParams = new URL(req.url).searchParams;
-  const year = parseInt(searchParams.get("year") || new Date().getFullYear());
-  const month = parseInt(searchParams.get("month") || new Date().getMonth());
+  try {
+    const { gymID } = await params;
+    if (!gymID)
+      return NextResponse.json({ error: "Missing gym ID" }, { status: 400 });
 
-  const members = await prisma.member.findMany({
-    where: { gymId: gymID, deletedAt: null },
-    select: { id: true, name: true },
-  });
+    const searchParams = new URL(req.url).searchParams;
+    const year = parseInt(searchParams.get("year")) || new Date().getFullYear();
+    const month = parseInt(searchParams.get("month")) || new Date().getMonth();
 
-  const attendances = await prisma.attendance.findMany({
-    where: {
-      gymId: gymID,
-      checkIn: {
-        gte: new Date(year, month, 1),
-        lt: new Date(year, month + 1, 1),
-      },
-    },
-  });
+    // Parallel queries
+    const [members, attendances, workingDays] = await Promise.all([
+      prisma.member.findMany({
+        where: { gymId: gymID, deletedAt: null },
+        select: { id: true, name: true },
+      }),
+      prisma.attendance.findMany({
+        where: {
+          gymId: gymID,
+          checkIn: {
+            gte: new Date(year, month, 1),
+            lt: new Date(year, month + 1, 1),
+          },
+        },
+        select: { id: true, memberId: true, checkIn: true, checkOut: true },
+      }),
+      getWorkingDaysInMonth(gymID, year, month),
+    ]);
 
-  const workingDays = await getWorkingDaysInMonth(gymID, year, month);
+    /* --------------------------- Members Statistics --------------------------- */
+    const data = members.map((member) => {
+      const records = attendances.filter((a) => a.memberId === member.id);
+      const presentDates = records.map((a) =>
+        new Date(a.checkIn).toDateString()
+      );
 
-  const data = members.map((m) => {
-    const memberAttendances = attendances.filter((a) => a.memberId === m.id);
-    const totalPresent = memberAttendances.length;
-
-    // only count past working days for absences
-    const totalAbsent = Math.max(
-      0,
-      workingDays.length - totalPresent
-    );
-
-    const presentDates = memberAttendances.map((a) =>
-      new Date(a.checkIn).toDateString()
-    );
-
-    return {
-      id: m.id,
-      name: m.name,
-      totalPresent,
-      totalAbsent,
-      streak: getStreak(presentDates, workingDays),
-      hasCheckedInToday: presentDates.includes(new Date().toDateString()),
-      checkOutDone: memberAttendances.some(
+      const totalPresent = records.length;
+      const totalAbsent = Math.max(0, workingDays.length - totalPresent);
+      const streak = calculateStreak(presentDates, workingDays);
+      const hasCheckedInToday = presentDates.includes(
+        new Date().toDateString()
+      );
+      const checkOutDone = records.some(
         (a) =>
           new Date(a.checkIn).toDateString() === new Date().toDateString() &&
           a.checkOut
-      ),
-    };
-  });
+      );
 
-  return NextResponse.json({ members: data });
-}
+      return {
+        id: member.id,
+        name: member.name,
+        totalPresent,
+        totalAbsent,
+        streak,
+        hasCheckedInToday,
+        checkOutDone,
+      };
+    });
 
-// ✅ Helper: Calculate streaks (consecutive present days)
-function getStreak(presentDates, workingDays) {
-  const sortedWorking = workingDays.map((d) => d.toDateString());
-  let streak = 0;
+    /* --------------------------- Trend Data for Charts --------------------------- */
+    // Get attendance counts for last 30 days
+    const today = new Date();
+    const last30Days = eachDayOfInterval({
+      start: subDays(today, 29),
+      end: today,
+    });
 
-  for (let i = sortedWorking.length - 1; i >= 0; i--) {
-    if (presentDates.includes(sortedWorking[i])) streak++;
-    else break;
+    const trendData = await Promise.all(
+      last30Days.map(async (day) => {
+        const start = new Date(day.setHours(0, 0, 0, 0));
+        const end = new Date(day.setHours(23, 59, 59, 999));
+        const count = await prisma.attendance.count({
+          where: {
+            gymId: gymID,
+            checkIn: { gte: start, lte: end },
+          },
+        });
+        return { date: format(start, "MMM d"), count };
+      })
+    );
+
+    // Pie chart data
+    const presentToday = data.filter((m) => m.hasCheckedInToday).length;
+    const absentToday = data.length - presentToday;
+
+    return NextResponse.json({
+      members: data,
+      trendData,
+      summary: { presentToday, absentToday, totalMembers: data.length },
+    });
+  } catch (error) {
+    console.error("Error in GET /attendance:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch attendance data" },
+      { status: 500 }
+    );
   }
-
-  return streak;
 }
 
-// ✅ POST — Mark Check-in
+/* -------------------------------------------------------------------------- */
+/*                               POST REQUEST                                 */
+/* -------------------------------------------------------------------------- */
+// ✅ Mark Check-in
 export async function POST(req, { params }) {
-  const { gymID } =await params;
-  const body = await req.json();
-  const { memberId, method } = body;
+  try {
+    const { gymID } = await params;
+    const { memberId, method = "MANUAL" } = await req.json();
 
-  const today = new Date();
-  const existing = await prisma.attendance.findFirst({
-    where: {
-      gymId: gymID,
-      memberId,
-      checkIn: {
-        gte: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+    if (!memberId)
+      return NextResponse.json(
+        { error: "Member ID is required" },
+        { status: 400 }
+      );
+
+    const today = new Date();
+    const startOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    const existing = await prisma.attendance.findFirst({
+      where: {
+        gymId: gymID,
+        memberId,
+        checkIn: { gte: startOfToday },
       },
-    },
-  });
+    });
 
-  if (existing)
-    return NextResponse.json({ message: "Already checked in today" }, { status: 400 });
+    if (existing)
+      return NextResponse.json(
+        { message: "Already checked in today" },
+        { status: 400 }
+      );
 
-  const attendance = await prisma.attendance.create({
-    data: {
-      gymId: gymID,
-      memberId,
-      checkIn: today,
-      method: method || "MANUAL",
-    },
-  });
+    const attendance = await prisma.attendance.create({
+      data: { gymId: gymID, memberId, checkIn: today, method },
+    });
 
-  return NextResponse.json(attendance);
+    return NextResponse.json(attendance);
+  } catch (error) {
+    console.error("Error in POST /attendance:", error);
+    return NextResponse.json({ error: "Failed to check in" }, { status: 500 });
+  }
 }
 
-// ✅ PATCH — Mark Checkout
+/* -------------------------------------------------------------------------- */
+/*                              PATCH REQUEST                                 */
+/* -------------------------------------------------------------------------- */
+// ✅ Mark Checkout
 export async function PATCH(req, { params }) {
-  const { gymID } = params;
-  const body = await req.json();
-  const { memberId } = body;
+  try {
+    const { gymID } = await params;
+    const { memberId } = await req.json();
 
-  const today = new Date();
-  const attendance = await prisma.attendance.findFirst({
-    where: {
-      gymId: gymID,
-      memberId,
-      checkIn: {
-        gte: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+    if (!memberId)
+      return NextResponse.json(
+        { error: "Member ID is required" },
+        { status: 400 }
+      );
+
+    const today = new Date();
+    const startOfToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    const attendance = await prisma.attendance.findFirst({
+      where: {
+        gymId: gymID,
+        memberId,
+        checkIn: { gte: startOfToday },
       },
-    },
-  });
+    });
 
-  if (!attendance)
-    return NextResponse.json({ message: "No check-in found" }, { status: 404 });
+    if (!attendance)
+      return NextResponse.json(
+        { message: "No check-in found for today" },
+        { status: 404 }
+      );
 
-  if (attendance.checkOut)
-    return NextResponse.json({ message: "Already checked out" }, { status: 400 });
+    if (attendance.checkOut)
+      return NextResponse.json(
+        { message: "Already checked out" },
+        { status: 400 }
+      );
 
-  const updated = await prisma.attendance.update({
-    where: { id: attendance.id },
-    data: { checkOut: new Date() },
-  });
+    const updated = await prisma.attendance.update({
+      where: { id: attendance.id },
+      data: { checkOut: new Date() },
+    });
 
-  return NextResponse.json(updated);
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Error in PATCH /attendance:", error);
+    return NextResponse.json({ error: "Failed to check out" }, { status: 500 });
+  }
 }
