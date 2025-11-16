@@ -465,38 +465,78 @@ model Discount {
 
 // -------------------- Scheduling --------------------
 
+// model ClassSchedule {
+//   id        String      @id @default(cuid())
+//   gymId     String
+//   gym       Gym         @relation(fields: [gymId], references: [id], onDelete: Cascade)
+//   name      String
+//   trainerId String?
+//   trainer   Trainer?    @relation(fields: [trainerId], references: [id])
+//   start     DateTime
+//   end       DateTime
+//   capacity  Int
+//   bookings  Booking[]
+
+//   @@index([gymId, start])
+//   @@index([trainerId])
+// }
+
+// model Booking {
+//   id        String        @id @default(cuid())
+//   gymId     String
+//   gym       Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+//   memberId  String
+//   member    Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+//   classId   String
+//   class     ClassSchedule @relation(fields: [classId], references: [id], onDelete: Cascade)
+//   status    String
+//   createdAt DateTime      @default(now())
+
+//   @@index([gymId])
+//   @@index([memberId])
+//   @@index([classId])
+//   @@index([createdAt])
+// }
+
 model ClassSchedule {
-  id        String      @id @default(cuid())
-  gymId     String
-  gym       Gym         @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  name      String
-  trainerId String?
-  trainer   Trainer?    @relation(fields: [trainerId], references: [id])
-  start     DateTime
-  end       DateTime
-  capacity  Int
-  bookings  Booking[]
+  id          String       @id @default(cuid())
+  gymId       String
+  gym         Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  trainerId   String?
+  trainer     Trainer?     @relation(fields: [trainerId], references: [id])
+  start       DateTime
+  end         DateTime
+  capacity    Int          // Max members allowed
+  bookings    Booking[]
+  status      String       @default("ACTIVE") // ACTIVE, CANCELLED, COMPLETED
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([gymId, start])
   @@index([trainerId])
 }
 
 model Booking {
-  id        String        @id @default(cuid())
-  gymId     String
-  gym       Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  memberId  String
-  member    Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  classId   String
-  class     ClassSchedule @relation(fields: [classId], references: [id], onDelete: Cascade)
-  status    String
-  createdAt DateTime      @default(now())
+  id         String        @id @default(cuid())
+  gymId      String
+  gym        Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  classId    String
+  class      ClassSchedule @relation(fields: [classId], references: [id], onDelete: Cascade)
+  status     String        @default("BOOKED") // BOOKED, CANCELLED, WAITLISTED, ATTENDED, NO_SHOW
+  attendedAt DateTime?
+  createdAt  DateTime      @default(now())
 
   @@index([gymId])
   @@index([memberId])
   @@index([classId])
   @@index([createdAt])
 }
+
 
 // -------------------- Equipment & Facility --------------------
 

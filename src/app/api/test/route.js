@@ -1,36 +1,22 @@
+import axios from "axios";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 
-export async function POST(req) {
+export async function GET(req) {
   try {
-    // You might get member data from the request body
-  const gymId = "cmhbk59xj0003umigm080hoqd"; // Example gym ID
+    const response = await axios.get("http://localhost:8000/");
 
-  
-
-    const notify = await prisma.notification.create({
-      data: {
-        gymId,
-        type: "PLAN_EXPIRY_SOON",
-        audience: "SYSTEM",
-        message: "Membership is going to expire soon. for Test User",
-      },
-    });
+    console.log("External API response: ", response.data);
 
     return NextResponse.json({
       success: true,
-      message: "Notification sent successfully",
-      notification: notify,
+      data: response.data
     });
+
   } catch (error) {
-    console.error("[NOTIFICATION_ERROR]", error);
+    console.error("Error fetching external API:", error.message);
 
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to send notification",
-        error: error.message,
-      },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }

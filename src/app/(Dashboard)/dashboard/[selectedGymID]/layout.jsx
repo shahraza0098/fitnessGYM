@@ -15,7 +15,8 @@ import {
   Users,
   BriefcaseBusiness ,
   ReceiptIndianRupee,
-  BellRing
+  BellRing,
+  CalendarClock
 } from "lucide-react";
 
 export default function InvestorDashboardLayout({ children }) {
@@ -55,6 +56,7 @@ export default function InvestorDashboardLayout({ children }) {
     { name: "Staff Management", href: `/dashboard/${selectedGymID}/staff-management`, icon: BriefcaseBusiness },
     { name: "Membership Plans", href: `/dashboard/${selectedGymID}/membership-plans`, icon: ReceiptIndianRupee },
     { name: "Notifications", href: `/dashboard/${selectedGymID}/notifications`, icon: BellRing },
+    { name: "Schedule Classes", href: `/dashboard/${selectedGymID}/classes`, icon: CalendarClock }
   ];
 
   // if (!selectedGymID) return <div>Loading gym...</div>;
